@@ -1,1 +1,155 @@
-# ratamutuo
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calcolatore Rata Mutuo 🏡</title>
+<meta name="description" content="Calcola facilmente la rata mensile del tuo mutuo e scopri quanto pagherai in totale e in interessi.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.3.0/chart.min.css"/>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+body {
+  margin:0;
+  font-family: 'Roboto', sans-serif;
+  background: linear-gradient(to bottom, #e0f7fa, #ffffff);
+  min-height:100vh;
+  display:flex;
+  justify-content:center;
+  padding:20px;
+}
+.container {
+  background: rgba(255,255,255,0.95);
+  border-radius:15px;
+  box-shadow:0 8px 20px rgba(0,0,0,0.2);
+  padding:30px;
+  max-width:600px;
+  width:100%;
+  position: relative;
+}
+.container::before {
+  content: "🏠💰";
+  font-size:50px;
+  position:absolute;
+  top:-25px;
+  left:calc(50% - 25px);
+}
+h1 { margin-bottom:25px; color:#00796b; text-align:center; }
+label { display:block; margin-top:15px; font-weight:bold; color:#004d40; }
+input { width:100%; padding:10px; margin-top:5px; border-radius:8px; border:1px solid #b2dfdb; font-size:16px; }
+button { margin-top:25px; width:100%; padding:12px; font-size:16px; border:none; border-radius:8px; background-color:#00796b; color:white; cursor:pointer; transition:0.3s; }
+button:hover { background-color:#004d40; }
+.result { margin-top:25px; background:#e0f2f1; padding:15px; border-radius:10px; font-size:16px; font-weight:bold; color:#004d40; line-height:1.6; }
+footer { margin-top:30px; font-size:13px; color:#666; text-align:center; }
+table { width:100%; border-collapse: collapse; margin-top:15px; font-size:14px; }
+th, td { border:1px solid #b2dfdb; padding:5px; text-align:center; }
+th { background:#00796b; color:white; }
+canvas { margin-top:20px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Calcolatore Rata Mutuo</h1>
+
+  <label>Importo del mutuo (€):</label>
+  <input type="number" id="capitale" placeholder="Es. 100000" />
+
+  <label>Tasso d'interesse annuo (%):</label>
+  <input type="number" step="0.01" id="tasso" placeholder="Es. 3.5" />
+
+  <label>Durata (anni):</label>
+  <input type="number" id="anni" placeholder="Es. 20" />
+
+  <label>Stipendio netto mensile (€):</label>
+  <input type="number" id="stipendio" placeholder="Es. 2000" />
+
+  <button onclick="calcolaRata()">Calcola Rata</button>
+
+  <div class="result" id="risultato"></div>
+  <canvas id="grafico" width="400" height="200"></canvas>
+  <div id="tabella"></div>
+
+  <footer>© 2025 - Calcolatore Mutuo Online | Strumento gratuito</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+function calcolaRata() {
+  const capitale = parseFloat(document.getElementById('capitale').value);
+  const tassoAnnuo = parseFloat(document.getElementById('tasso').value);
+  const anni = parseInt(document.getElementById('anni').value);
+  const stipendio = parseFloat(document.getElementById('stipendio').value);
+
+  if(isNaN(capitale) || isNaN(tassoAnnuo) || isNaN(anni) || capitale<=0 || tassoAnnuo<=0 || anni<=0){
+    document.getElementById('risultato').innerText = "⚠️ Inserisci tutti i dati correttamente";
+    return;
+  }
+
+  if(isNaN(stipendio) || stipendio <= 0){
+    document.getElementById('risultato').innerText = "⚠️ Inserisci anche il tuo stipendio netto mensile";
+    return;
+  }
+
+  const tassoMensile = tassoAnnuo/12/100;
+  const numeroRate = anni*12;
+  const rata = capitale*(tassoMensile*Math.pow(1+tassoMensile,numeroRate))/(Math.pow(1+tassoMensile,numeroRate)-1);
+  const totalePagato = rata*numeroRate;
+  const interessiPagati = totalePagato-capitale;
+
+  // Mostra risultati principali e consiglio
+  const percentualeReddito = (rata/stipendio)*100;
+  let consiglio = "";
+  if(percentualeReddito > 35){
+    consiglio = `⚠️ La rata rappresenta il ${percentualeReddito.toFixed(1)}% del tuo stipendio netto. Potrebbe essere rischioso sostenere questo mutuo.`;
+  } else if(percentualeReddito > 25){
+    consiglio = `✅ La rata rappresenta il ${percentualeReddito.toFixed(1)}% del tuo stipendio netto, quindi è sostenibile ma fai attenzione al bilancio mensile.`;
+  } else {
+    consiglio = `👍 La rata rappresenta solo il ${percentualeReddito.toFixed(1)}% del tuo stipendio netto. Mutuo molto sostenibile.`;
+  }
+
+  document.getElementById('risultato').innerHTML = `
+  💰 <b>Rata mensile:</b> ${rata.toFixed(2)} €<br>
+  🏦 <b>Totale pagato alla banca:</b> ${totalePagato.toFixed(2)} €<br>
+  💸 <b>Interessi totali:</b> ${interessiPagati.toFixed(2)} €<br>
+  📅 <b>Durata:</b> ${anni} anni (${numeroRate} rate mensili)<br>
+  ${consiglio}
+  `;
+
+  // Grafico capitale vs interessi
+  const ctx = document.getElementById('grafico').getContext('2d');
+  if(window.myChart) window.myChart.destroy();
+  window.myChart = new Chart(ctx,{
+    type:'doughnut',
+    data:{
+      labels:['Capitale','Interessi'],
+      datasets:[{
+        data:[capitale,interessiPagati],
+        background:['#00796b','#e57373']
+      }]
+    },
+    options:{plugins:{legend:{position:'bottom'}}}
+  });
+
+  // Tabella ammortamento per anno
+  let tabellaHTML = `<table><tr><th>Anno</th><th>Interessi (€)</th><th>Capitale (€)</th><th>Totale pagato (€)</th></tr>`;
+  let saldo = capitale;
+  for(let a=1;a<=anni;a++){
+    let interessiAnno = 0;
+    let capitaleAnno = 0;
+    for(let m=0;m<12;m++){
+      let interesseMese = saldo*tassoMensile;
+      interessiAnno += interesseMese;
+      let capitaleMese = rata - interesseMese;
+      capitaleAnno += capitaleMese;
+      saldo -= capitaleMese;
+    }
+    tabellaHTML += `<tr><td>${a}</td><td>${interessiAnno.toFixed(2)}</td><td>${capitaleAnno.toFixed(2)}</td><td>${(interessiAnno+capitaleAnno).toFixed(2)}</td></tr>`;
+  }
+  tabellaHTML += `</table>`;
+  document.getElementById('tabella').innerHTML = tabellaHTML;
+}
+</script>
+
+</body>
+</html>
+
